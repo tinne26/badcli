@@ -15,7 +15,7 @@ var ColorStringFormatsInfo =
 	"values instead of three (e.g. \"rgba(0, 255, 0, 128)\").\n" +
 	"- Implicit RGB(A): triplets or quadruplets for RGB(A) can also be passed without the descriptor, " +
 	"without braces, and with any punctuation symbol as a separator in general. This means that " +
-	"\"[255|0|128]\", \"80, 90, 60\", \"{0, 0, 255, 128}\", \"(99:98:97)\" and \"100.100.200.200\" are " +
+	"\"[255;0;128]\", \"80, 90, 60\", \"{0, 0, 255, 128}\", \"(99:98:97)\" and \"100.100.200.200\" are " +
 	"all weird but allowed."
 
 // Assert interface compliance.
@@ -60,7 +60,7 @@ func (self *ColorString) ParseFromArg(arg string) error {
 			var channels [3]uint8
 			for i := 0; i < 3; i += 1 {
 				char := arg[i + 1]
-				hex, err := ascii2hex(char)
+				hex, err := hexCharValue(char)
 				if err != nil { return err }
 				channels[i] = (hex << 4) + hex
 			}
@@ -69,7 +69,7 @@ func (self *ColorString) ParseFromArg(arg string) error {
 			var channels [4]uint8
 			for i := 0; i < 4; i += 1 {
 				char := arg[i + 1]
-				hex, err := ascii2hex(char)
+				hex, err := hexCharValue(char)
 				if err != nil { return err }
 				channels[i] = (hex << 4) + hex
 			}
@@ -78,9 +78,9 @@ func (self *ColorString) ParseFromArg(arg string) error {
 			var channels [3]uint8
 			for i := 0; i < 3; i += 1 {
 				highChar, lowChar := arg[i*2 + 1], arg[i*2 + 2]
-				high, err := ascii2hex(highChar)
+				high, err := hexCharValue(highChar)
 				if err != nil { return err }
-				low , err := ascii2hex(lowChar)
+				low , err := hexCharValue(lowChar)
 				if err != nil { return err }
 				channels[i] = (high << 4) + low
 			}
@@ -89,9 +89,9 @@ func (self *ColorString) ParseFromArg(arg string) error {
 			var channels [4]uint8
 			for i := 0; i < 4; i += 1 {
 				highChar, lowChar := arg[i*2 + 1], arg[i*2 + 2]
-				high, err := ascii2hex(highChar)
+				high, err := hexCharValue(highChar)
 				if err != nil { return err }
-				low , err := ascii2hex(lowChar)
+				low , err := hexCharValue(lowChar)
 				if err != nil { return err }
 				channels[i] = (high << 4) + low
 			}
@@ -110,10 +110,10 @@ func (self *ColorString) ParseFromArg(arg string) error {
 	if strings.HasPrefix(arg, "rgb") || strings.HasPrefix(arg, "RGB") {
 		needsBraces = true
 		if strings.HasPrefix(arg, "rgba") || strings.HasPrefix(arg, "RGBA") {
-			arg = arg[4 : ]
+			arg = strings.TrimSpace(arg[4 : ])
 			minComponents = 4
 		} else {
-			arg = arg[3 : ]
+			arg = strings.TrimSpace(arg[3 : ])
 			maxComponents = 3
 		}
 	}
@@ -125,7 +125,7 @@ func (self *ColorString) ParseFromArg(arg string) error {
 			rightRune, rightLen := utf8.DecodeLastRuneInString(arg)
 			if rightRune == bracesPair.Right {
 				hasBraces = true
-				arg = arg[leftLen : len(arg) - rightLen]
+				arg = strings.TrimSpace(arg[leftLen : len(arg) - rightLen])
 				break
 			}
 		}
@@ -133,40 +133,36 @@ func (self *ColorString) ParseFromArg(arg string) error {
 
 	// multiple error checks
 	if needsBraces && !hasBraces {
-		return errors.New("expected braces surrounding the color channel values (e.g. rgb(0,128,0))")
+		return errors.New("expected symmetric braces surrounding the color channel values (e.g. \"rgb(200, 128, 0)\")")
 	}
 	if len(arg) < minComponents*2 {
 		return errors.New("incomplete color definition")
 	}
 	if arg[0] < 48 || arg[0] > 57 {
-		return errors.New("while parsing color, expected digit but found '" + string(arg) + "'")
+		return errors.New("invalid color format: expected a number, braces or a prefix (e.g. \"rgb\", \"#\")")
 	}
 
 	// read digits
 	var components [4]int
 	componentIndex := 0
-	reachedIndex := 0
-	readingSeparator := false
+	readingSeparator := true
 	for len(arg) > 0 {
 		runeChar, runeLen := utf8.DecodeRuneInString(arg)
 		if runeChar >= 48 && runeChar <= 57 { // valid digit
-			if componentIndex > maxComponents {
-				return errors.New("too many color components (expected only " + strconv.Itoa(componentIndex) + ")")
-			}
-			reachedIndex = componentIndex
+			if readingSeparator { componentIndex += 1 }
 			readingSeparator = false
-			component := components[componentIndex]
+			if componentIndex > maxComponents {
+				return errors.New("too many color components (expected only " + strconv.Itoa(maxComponents) + ")")
+			}
+			component := components[componentIndex - 1]
 			newComponentValue := component*10 + int(byte(runeChar) - 48)
 			if newComponentValue > 255 {
 				return errors.New("color component can't exceed 255")
 			}
-			components[componentIndex] = newComponentValue
+			components[componentIndex - 1] = newComponentValue
 		} else {
-			if !readingSeparator {
-				readingSeparator = true
-				componentIndex += 1
-			}
-			if runeChar != ' ' && !unicode.IsPunct(runeChar) {
+			readingSeparator = true
+			if runeChar != ' ' && !unicode.IsPunct(runeChar) && runeChar != '|' {
 				charStr := string(runeChar)
 				if runeChar < 128 { charStr = asciiCodePointName(byte(runeChar)) }
 				return errors.New("invalid color component separator '" + charStr + "' (only spaces and punctuation symbols allowed)")
@@ -175,7 +171,7 @@ func (self *ColorString) ParseFromArg(arg string) error {
 		arg = arg[runeLen : ]
 	}
 
-	if reachedIndex < minComponents {
+	if componentIndex < minComponents {
 		if minComponents < maxComponents {
 			return errors.New("too few color components (expected at least " + strconv.Itoa(minComponents) + ")")
 		} else {
@@ -183,7 +179,7 @@ func (self *ColorString) ParseFromArg(arg string) error {
 		}
 	}
 
-	if reachedIndex == 3 {
+	if componentIndex == 4 {
 		*self = ColorString(color.RGBA{
 			uint8(components[0]), 
 			uint8(components[1]), 
@@ -216,7 +212,7 @@ func asciiCodePointName(char byte) string {
 	return string(char)
 }
 
-func ascii2hex(char byte) (uint8, error) {
+func hexCharValue(char byte) (uint8, error) {
 	var err = func(b byte) error {
 		msg := "invalid hexadecimal character '" + asciiCodePointName(b)
 		msg += "' (ascii code = " + strconv.Itoa(int(b)) +")"
@@ -226,8 +222,8 @@ func ascii2hex(char byte) (uint8, error) {
 	if char < 48  { return 0, err(char) }
 	if char < 58  { return char - 48, nil }
 	if char < 65  { return 0, err(char) }
-	if char < 71  { return char - 65, nil }
+	if char < 71  { return char - 65 + 10, nil }
 	if char < 97  { return 0, err(char) }
-	if char < 103 { return char - 97, nil }
+	if char < 103 { return char - 97 + 10, nil }
 	return 0, err(char)
 }
