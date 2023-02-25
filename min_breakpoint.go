@@ -28,22 +28,28 @@ func findBreakpointMin(splits []split, maxLen uint16) uint16 {
 	// linear search
 	minBreakpointLen        := uint16(0)
 	minBreakpointInclusions := 0
-	iRight := len(splits)
-	for iLeft := 0; iLeft < len(splits); iLeft++ {
-		budget := maxLen - splits[leftIncIndices[iLeft]].leftLen
-		if budget < 0 { break }
+	iRight := len(splits) - 1
 
-		for iRight > 0 {
-			rightIndex := rightIncIndices[iRight - 1]
+	for iLeft := 0; iLeft < len(splits); iLeft++ {
+		leftCost := splits[leftIncIndices[iLeft]].leftLen
+		if leftCost > maxLen { break }
+		budget := maxLen - leftCost
+
+		accept := false
+		for {
+			rightIndex := rightIncIndices[iRight]
 			if budget < splits[rightIndex].rightLen { break }
+			accept = true
+			if iRight == 0 { break } // can't go further
 			iRight -= 1
 		}
+		if !accept { continue }
 
 		inclusions := iLeft + (len(splits) - iRight)
 		if inclusions > minBreakpointInclusions {
-			minBreakpointLen = splits[leftIncIndices[iLeft]].leftLen
+			minBreakpointLen = leftCost
 			minBreakpointInclusions = inclusions
-		}
+		}		
 	}
 
 	// return result

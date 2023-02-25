@@ -16,7 +16,6 @@ var NoCutoff int = -1
 func EditDistance(a, b string, costCutoff int) int {
 	// Idea: could adapt a version to have custom weights for different
 	//       operations. Keyboard transpositions specially.
-	// Mmmm: maybe doing []rune() for "short" wouldn't be that bad.
 
 	// stupid case early return
 	if costCutoff == 0 { return 0 }
@@ -43,21 +42,24 @@ func EditDistance(a, b string, costCutoff int) int {
 	var min3 = func(a, b, c uint16) uint16 { return min2(min2(a, b), c) }
 	
 	// declare indices to work with
-	row, col := 0, 0 // table row and col indices. numrows, numcols ~= runeLen(long), runeLen(short)
-	iPrevRow, iCurrRow, iNextRow := 0, len(short) + 1, 2*len(short) + 2 // table indices for the 3 rows
+	row, col := 1, 1 // table row and col indices. numrows, numcols ~= runeLen(long), runeLen(short)
+	iTranRow, iPrevRow, iCurrRow := 0, len(short) + 1, 2*len(short) + 2 // table indices for the 3 rows
 	var prevRowRune, prevColRune rune
 	costCutoff16 := uint16(costCutoff)
 	if costCutoff > 65535 { costCutoff16 = 65535 }
 
-	// pre-initialize "current" row
-	for i := 0; i < iCurrRow; i++ { table[iCurrRow + i] = uint16(i) }
+	// pre-initialize previous row
+	for i := 0; i < len(short) + 1; i++ {
+		table[iPrevRow + i] = uint16(i)
+	}
 
 	// quadratic OSA algorithm
 	var cost uint16
 	vertStr := long
 	for { // each row
-		// set base table row value
-		table[iNextRow] = uint16(row) + 1
+		// set base row value
+		minRowCost := uint16(row)
+		table[iCurrRow] = minRowCost
 
 		// obtain current row rune
 		currRowRune, runeLength := utf8.DecodeRuneInString(vertStr)
@@ -70,14 +72,15 @@ func EditDistance(a, b string, costCutoff int) int {
 			horzStr = horzStr[runeLength : ]
 
 			// core algorithm logic
-			deletion     := table[iCurrRow + col + 1] + 1
-			insertion    := table[iNextRow + col + 0] + 1
-			substitution := table[iCurrRow + col + 0] + zeroOne(currRowRune != currColRune)
+			deletion     := table[iPrevRow + col + 0] + 1
+			insertion    := table[iCurrRow + col - 1] + 1
+			substitution := table[iPrevRow + col - 1] + zeroOne(currRowRune != currColRune)
 			cost = min3(deletion, insertion, substitution)
-			if row > 0 && col > 0 && currRowRune == prevColRune && prevRowRune == currRowRune {
-				cost = min2(cost, table[iPrevRow + col - 1])
+			if row > 1 && col > 1 && currRowRune == prevColRune && prevRowRune == currColRune {
+				cost = min2(cost, table[iTranRow + col - 2] + 1)
 			}
-			table[iNextRow + col + 1] = cost
+			table[iCurrRow + col] = cost
+			if cost < minRowCost { minRowCost = cost }
 
 			// either stop or prepare for next iteration
 			if len(horzStr) == 0 { break }
@@ -86,10 +89,10 @@ func EditDistance(a, b string, costCutoff int) int {
 		}
 
 		// either stop or prepare for next iteration
-		if len(vertStr) == 0 || cost >= costCutoff16 { break }
-		iPrevRow, iCurrRow, iNextRow = iCurrRow, iNextRow, iPrevRow
+		if len(vertStr) == 0 || minRowCost >= costCutoff16 { break }
+		iTranRow, iPrevRow, iCurrRow = iPrevRow, iCurrRow, iTranRow
 		prevRowRune = currRowRune
-		row, col = row + 1, 0
+		row, col = row + 1, 1
 	}
 
 	if usingGlobTable { releaseEditDistanceTable() }

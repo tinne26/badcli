@@ -69,13 +69,13 @@ func (self *CLI) ParseArguments() {
 						msg += "(Maybe you meant '--" + key + "'?)\n"
 					}
 				}
-				fmt.Fprintf(os.Stderr, msg + "\n" + SeeHelp, arg)
+				fmt.Fprintf(os.Stderr, msg + "\n" + SeeHelp, arg, self.programName)
 			}
 
 			// check redundant flag
 			if flagPtr.SetByUser {
 				msg := "Duplicated flag '%s'. Program flags can't be repeated.\n"
-				fmt.Fprintf(os.Stderr, msg + SeeHelp, arg)
+				fmt.Fprintf(os.Stderr, msg + SeeHelp, arg, self.programName)
 			}
 
 			// get next argument to parse flag
@@ -87,7 +87,7 @@ func (self *CLI) ParseArguments() {
 						fmt.Fprint(os.Stderr, "\t", line, "\n")
 						return nil
 					})
-					fmt.Fprint(os.Stderr, SeeHelp)
+					fmt.Fprintf(os.Stderr, SeeHelp, self.programName)
 				}
 			} else { // obtain next value
 				index += 1
@@ -99,7 +99,7 @@ func (self *CLI) ParseArguments() {
 						fmt.Fprint(os.Stderr, "\t", line, "\n")
 						return nil
 					})
-					fmt.Fprint(os.Stderr, SeeHelp)
+					fmt.Fprintf(os.Stderr, SeeHelp, self.programName)
 				}
 			}
 
@@ -110,7 +110,7 @@ func (self *CLI) ParseArguments() {
 			if runeLenAbove(arg, 2) {
 				msg := "Failed to parse '%s' argument:\n" +
 					"\tmulti-letter flags not allowed for single dash flags\n"
-				fmt.Fprintf(os.Stderr, msg + SeeHelp, arg)
+				fmt.Fprintf(os.Stderr, msg + SeeHelp, arg, self.programName)
 			}
 
 			// TODO: actually I should translate to long flag and just use it
@@ -119,7 +119,7 @@ func (self *CLI) ParseArguments() {
 			// extra argument
 			if self.extraArgsDisallowed {
 				msg := "Unexpected '%s' argument.\n"
-				fmt.Fprintf(os.Stderr, msg + SeeHelp, arg)
+				fmt.Fprintf(os.Stderr, msg + SeeHelp, arg, self.programName)
 			} else {
 				self.extraArgs = append(self.extraArgs, arg)
 			}
@@ -396,14 +396,14 @@ func (self *CLI) ExportImage(path string, img image.Image, exportFn ImageExportF
 		cleanupErr := os.Remove(path)
 		if cleanupErr != nil {
 			if strings.Contains(cleanupErr.Error(), path) {
-				self.Warn("couldn't clean up failed image export: %s", path, cleanupErr)
+				self.Warn("couldn't clean up failed image export: %s", cleanupErr)
 			} else {
 				self.Warn("couldn't clean up failed image export at '%s': %s", path, cleanupErr)
 			}	
 		}
 
 		if strings.Contains(err.Error(), path) {
-			self.Fatal("failed to encode image to file: %s", path, err)
+			self.Fatal("failed to encode image to file: %s", err)
 		} else {
 			self.Fatal("failed to encode image '%s' to file: %s", path, err)
 		}
