@@ -70,12 +70,14 @@ func (self *CLI) ParseArguments() {
 					}
 				}
 				fmt.Fprintf(os.Stderr, msg + "\n" + SeeHelp, arg, self.programName)
+				os.Exit(2)
 			}
 
 			// check redundant flag
 			if flagPtr.SetByUser {
 				msg := "Duplicated flag '%s'. Program flags can't be repeated.\n"
 				fmt.Fprintf(os.Stderr, msg + SeeHelp, arg, self.programName)
+				os.Exit(2)
 			}
 
 			// get next argument to parse flag
@@ -88,6 +90,7 @@ func (self *CLI) ParseArguments() {
 						return nil
 					})
 					fmt.Fprintf(os.Stderr, SeeHelp, self.programName)
+					os.Exit(2)
 				}
 			} else { // obtain next value
 				index += 1
@@ -100,6 +103,7 @@ func (self *CLI) ParseArguments() {
 						return nil
 					})
 					fmt.Fprintf(os.Stderr, SeeHelp, self.programName)
+					os.Exit(2)
 				}
 			}
 
@@ -111,6 +115,7 @@ func (self *CLI) ParseArguments() {
 				msg := "Failed to parse '%s' argument:\n" +
 					"\tmulti-letter flags not allowed for single dash flags\n"
 				fmt.Fprintf(os.Stderr, msg + SeeHelp, arg, self.programName)
+				os.Exit(2)
 			}
 
 			// TODO: actually I should translate to long flag and just use it
@@ -120,6 +125,7 @@ func (self *CLI) ParseArguments() {
 			if self.extraArgsDisallowed {
 				msg := "Unexpected '%s' argument.\n"
 				fmt.Fprintf(os.Stderr, msg + SeeHelp, arg, self.programName)
+				os.Exit(2)
 			} else {
 				self.extraArgs = append(self.extraArgs, arg)
 			}
