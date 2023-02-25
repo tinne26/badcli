@@ -283,7 +283,7 @@ func (self *CLI) PrintUsage(output io.Writer) {
 	
 	// sort flags alphabetically
 	sort.Slice(flagIndices, func(i, j int) bool {
-		return flagNames[flagIndices[i]] < flagNames[flagIndices[i]]
+		return flagNames[flagIndices[i]] < flagNames[flagIndices[j]]
 	})
 
 	// first flags iteration, print short lines

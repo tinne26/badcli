@@ -77,7 +77,7 @@ func EditDistance(a, b string, costCutoff int) int {
 			substitution := table[iPrevRow + col - 1] + zeroOne(currRowRune != currColRune)
 			cost = min3(deletion, insertion, substitution)
 			if row > 1 && col > 1 && currRowRune == prevColRune && prevRowRune == currColRune {
-				cost = min2(cost, table[iTranRow + col - 2] + 1)
+				cost = min2(cost, table[iTranRow + col - 2] + 1) // transposition
 			}
 			table[iCurrRow + col] = cost
 			if cost < minRowCost { minRowCost = cost }
