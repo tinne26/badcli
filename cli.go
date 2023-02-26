@@ -279,6 +279,7 @@ func (self *CLI) PrintUsage(output io.Writer) {
 		flagIndices[flagIndex] = flagIndex
 		flagIndex += 1
 	}
+
 	// TODO: I'm not considering the case of line breaks within Usage descriptions.
 	//       I don't know if I should check, but... I guess it's ok to ignore ftm.
 
@@ -344,6 +345,19 @@ func (self *CLI) PrintUsage(output io.Writer) {
 			return nil
 		})
 	}
+}
+
+// This function will only stop iteration and forward an error if 
+// the passed function returns an error.
+//
+// All flags are iterated, whether they have been set by the user
+// or not. The order of the flags is arbitrary.
+func (self *CLI) EachFlag(fn func(string, FlagValue) error) error {
+	for key, flag := range self.flags {
+		err := fn(key, flag.Value)
+		if err != nil { return err }
+	}
+	return nil
 }
 
 // Similar to fmt.Fprintf(os.Stderr, "Warning: ", ...).

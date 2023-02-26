@@ -11,43 +11,34 @@ func findBreakpointMin(splits []split, maxLen uint16) uint16 {
 	// empty case
 	if len(splits) == 0 { return 0 }
 	
-	// create left and right index slices in increasing length
-	leftIncIndices := make([]int, len(splits))
-	for i := 0; i < len(splits); i++ { leftIncIndices[i] = i }
-	rightIncIndices := make([]int, len(splits))
-	copy(rightIncIndices, leftIncIndices)
+	// create index slice
+	indices := make([]int, len(splits))
+	for i := 0; i < len(splits); i++ { indices[i] = i }
 	
-	// sort both slices by increasing length
-	sort.Slice(leftIncIndices, func(i, j int) bool {
-		return splits[leftIncIndices[i]].leftLen < splits[leftIncIndices[i]].leftLen
-	})
-	sort.Slice(rightIncIndices, func(i, j int) bool {
-		return splits[rightIncIndices[i]].leftLen < splits[rightIncIndices[i]].leftLen
+	// sort indices slice by increasing left length
+	sort.Slice(indices, func(i, j int) bool {
+		return splits[indices[i]].leftLen < splits[indices[j]].leftLen
 	})
 
-	// linear search
+	// brute force search
 	minBreakpointLen        := uint16(0)
 	minBreakpointInclusions := 0
-	iRight := len(splits) - 1
+	for index := 0; index < len(splits); index++ {
+		split := splits[indices[index]]
+		if split.leftLen + split.rightLen > maxLen { continue }
+		if index < minBreakpointInclusions { break }
 
-	for iLeft := 0; iLeft < len(splits); iLeft++ {
-		leftCost := splits[leftIncIndices[iLeft]].leftLen
-		if leftCost > maxLen { break }
-		budget := maxLen - leftCost
-
-		accept := false
-		for {
-			rightIndex := rightIncIndices[iRight]
-			if budget < splits[rightIndex].rightLen { break }
-			accept = true
-			if iRight == 0 { break } // can't go further
-			iRight -= 1
+		rightBudget := maxLen - split.leftLen
+		inclusions := 1
+		for subIndex := 0; subIndex < index; subIndex++ {
+			subSplit := splits[indices[subIndex]]
+			if subSplit.rightLen <= rightBudget {
+				inclusions += 1
+			}
 		}
-		if !accept { continue }
 
-		inclusions := iLeft + (len(splits) - iRight)
 		if inclusions > minBreakpointInclusions {
-			minBreakpointLen = leftCost
+			minBreakpointLen = split.leftLen
 			minBreakpointInclusions = inclusions
 		}		
 	}
