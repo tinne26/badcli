@@ -54,13 +54,44 @@ func TestColorStringRGBA(t *testing.T) {
 		{"rgba(10.20,30_0)", color.RGBA{10, 20, 30, 0}},
 		{"RGBA( 100 , 200 , 30 , 222)", color.RGBA{100, 200, 30, 222}},
 		{"RGBA( 0 1 2 111 )", color.RGBA{0, 1, 2, 111}},
+		{"rgb(9 9 9)", color.RGBA{9, 9, 9, 255}},
+		{"rgba(0 1 0 2)", color.RGBA{0, 1, 0, 2}},
+		{"RGB(0 0 0)", color.RGBA{0, 0, 0, 255}},
 	}
 
 	clrString := &ColorString{}
 	for i, test := range tests {
 		err := clrString.ParseFromArg(test.in)
 		if err != nil {
-			t.Fatalf("test#%d returned an error: %s", i, err)
+			t.Fatalf("test#%d ColorString.ParseFromArg(\"%s\") returned an error: %s", i, test.in, err)
+		}
+		clrParsed := clrString.RGBA8()
+		if clrParsed != test.out {
+			t.Fatalf(
+				"test#%d, ColorString.ParseFromArg(\"%s\") => '%v' (expected '%v')",
+				i, test.in, clrParsed, test.out,
+			)
+		}
+	}
+}
+
+func TestColorStringImplicit(t *testing.T) {
+	tests := []struct{
+		in string
+		out color.RGBA
+	}{
+		{"0 0 0", color.RGBA{0, 0, 0, 255}},
+		{"88 77 66", color.RGBA{88, 77, 66, 255}},
+		{"88, 77, 66", color.RGBA{88, 77, 66, 255}},
+		{"88:77:66", color.RGBA{88, 77, 66, 255}},
+		{"0 255 0 200", color.RGBA{0, 255, 0, 200}},
+	}
+
+	clrString := &ColorString{}
+	for i, test := range tests {
+		err := clrString.ParseFromArg(test.in)
+		if err != nil {
+			t.Fatalf("test#%d ColorString.ParseFromArg(\"%s\") returned an error: %s", i, test.in, err)
 		}
 		clrParsed := clrString.RGBA8()
 		if clrParsed != test.out {

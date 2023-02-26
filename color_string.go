@@ -135,7 +135,7 @@ func (self *ColorString) ParseFromArg(arg string) error {
 	if needsBraces && !hasBraces {
 		return errors.New("expected symmetric braces surrounding the color channel values (e.g. \"rgb(200, 128, 0)\")")
 	}
-	if len(arg) < minComponents*2 {
+	if len(arg) < minComponents*2 - 1 {
 		return errors.New("incomplete color definition")
 	}
 	if arg[0] < 48 || arg[0] > 57 {
